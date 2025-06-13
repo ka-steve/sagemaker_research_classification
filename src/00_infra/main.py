@@ -2,7 +2,7 @@
 from constructs import Construct
 from cdktf import App, TerraformStack, TerraformOutput
 from imports.aws.provider import AwsProvider
-from imports.aws import s3_bucket, sagemaker_notebook_instance, sagemaker_notebook_instance_lifecycle_configuration, iam_role, iam_role_policy_attachment, sagemaker_model
+from imports.aws import s3_bucket, sagemaker_notebook_instance, sagemaker_notebook_instance_lifecycle_configuration, iam_role, iam_policy, iam_role_policy_attachment, sagemaker_model
 
 class SageMakerStack(TerraformStack):
     def __init__(self, scope: Construct, id: str):
@@ -19,16 +19,16 @@ class SageMakerStack(TerraformStack):
         sagemaker_role = iam_role.IamRole(self, "SageMakerExecutionRole",
             name="SageMakerExecutionRole",
             assume_role_policy='''{
-                "Version": "2012-10-17",
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Principal": {
-                            "Service": "sagemaker.amazonaws.com"
-                        },
-                        "Action": "sts:AssumeRole"
-                    }
-                ]
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                "Effect": "Allow",
+                "Principal": {
+                    "Service": "sagemaker.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+                }
+            ]
             }'''
         )
 
@@ -41,6 +41,31 @@ class SageMakerStack(TerraformStack):
         iam_role_policy_attachment.IamRolePolicyAttachment(self, "SageMakerFullAccess",
             role=sagemaker_role.name,
             policy_arn="arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
+        )
+
+        iam_role_policy_attachment.IamRolePolicyAttachment(self, "SecretsManagerAccess",
+            role=sagemaker_role.name,
+            policy_arn="arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+        )
+
+        secrets_manager_policy = iam_policy.IamPolicy(self, "SecretsManagerPolicy",
+            name="SecretsManagerAccessPolicy",
+            policy='''{
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "secretsmanager:GetSecretValue",
+                        "Resource": "arn:aws:secretsmanager:eu-west-2:762595428873:secret:semanticscholar_api_key"
+                    }
+                ]
+            }'''
+        )
+
+        # --- Attach Policy to Role ---
+        iam_role_policy_attachment.IamRolePolicyAttachment(self, "SecretsManagerPolicyAttachment",
+            role=sagemaker_role.name,
+            policy_arn=secrets_manager_policy.arn
         )
 
         # --- 3. Define SageMaker Model ---
