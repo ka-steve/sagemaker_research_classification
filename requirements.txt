@@ -1,3 +1,4 @@
+numexpr==2.11.0
 pandas==2.3.1
 sagemaker==2.250.0
 transformers==4.55.2
