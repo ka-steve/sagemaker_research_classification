@@ -1,6 +1,7 @@
 numexpr==2.11.0
 pandas==2.3.1
-sagemaker==2.250.0
-transformers==4.55.2
+sagemaker==2.250.0 # The newest version at the time
+transformers==4.49.0 # The newest version sagemaker==2.250.0 supports, but only in Python 3.11
 datasets==4.0.0
 accelerate==1.10.0
+torch==2.3.0

@@ -1,0 +1,5 @@
+semanticscholar_secret_keys[0]: x-api-key
+SEMANTICSCHOLAR_LATEST_RELEASE_ID: 2025-08-12
+test_content: testdocument
+args.test_argument_key_01: test-argument-default-value-01
+args.test_argument_key_02: test-argument-default-value-02
