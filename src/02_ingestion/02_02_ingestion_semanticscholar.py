@@ -1,18 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,py:percent
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.17.2
-#   kernelspec:
-#     display_name: conda_pytorch_p310
-#     language: python
-#     name: conda_pytorch_p310
-# ---
-
 # %%
 import requests
 import boto3
@@ -22,12 +7,17 @@ import sys
 import argparse
 import importlib
 import subprocess
+import pathlib
 from IPython.display import display
-
+# 4
 # Adding ../01_modules or ./01_modules to the system path so that we can load modules from 
 # there as well
-modules_path_in_notebook = os.path.abspath(os.path.join(os.getcwd(), '..', '01_modules'))
-modules_path_in_processing_script = os.path.abspath(os.path.join(os.getcwd(), '01_modules'))
+if '__file__' in globals():
+    script_dir = pathlib.Path(__file__).parent.resolve()
+else:
+    script_dir = pathlib.Path().absolute()
+modules_path_in_notebook = os.path.abspath(os.path.join(script_dir, '..', '01_modules'))
+modules_path_in_processing_script = os.path.abspath(os.path.join(script_dir, '01_modules'))
 if os.path.exists(modules_path_in_notebook):
     sys.path.append(modules_path_in_notebook)
 if os.path.exists(modules_path_in_processing_script):
@@ -101,13 +91,15 @@ print (args)
 
 if RUNTYPE == 'dev':
     PROCESSING_FILEPATH_PREFIX = '_dev_processing'
+    PROCESSING_FILEPATH_INPUT = os.path.join(script_dir, f'{PROCESSING_FILEPATH_PREFIX}/input/data/')
+    PROCESSING_FILEPATH_OUTPUT = os.path.join(script_dir, f'{PROCESSING_FILEPATH_PREFIX}/output/results/')
 elif RUNTYPE == 'prod':
     PROCESSING_FILEPATH_PREFIX = config.DEFAULT_PROCESSING_FILEPATH_PREFIX
+    PROCESSING_FILEPATH_INPUT = f'{PROCESSING_FILEPATH_PREFIX}/input/data/'
+    PROCESSING_FILEPATH_OUTPUT = f'{PROCESSING_FILEPATH_PREFIX}/output/results/'
 else:
     raise ValueError('Argument --runtype should be either "dev" or "prod" (without quotes).')
 
-PROCESSING_FILEPATH_INPUT = f'{PROCESSING_FILEPATH_PREFIX}/input/data/'
-PROCESSING_FILEPATH_OUTPUT = f'{PROCESSING_FILEPATH_PREFIX}/output/results/'
 
 utils.ensure_path(PROCESSING_FILEPATH_INPUT)
 utils.ensure_path(PROCESSING_FILEPATH_OUTPUT)
