@@ -69,10 +69,13 @@ def get_releases_and_metadata():
 def get_dataset_download_urls(release_id, dataset_name):
     """Fetch the download URL for a specific dataset."""
     url = f'{config.SEMANTICSCHOLAR_API_BASE_URL}/{release_id}/dataset/{dataset_name}'
-    response = requests.get(url, headers={'x-api-key': SEMANTICSCHOLAR_API_KEY}
-)
+    headers={'x-api-key': SEMANTICSCHOLAR_API_KEY}
+    print(f'Fetching dataset download URLs from: {url}', 
+        f'with headers: {headers}')# TODO: remove this print statement
+    
+    response = requests.get(url, headers=headers)
+    # print(json.dumps(response.json(), indent=2, default=str))
     response.raise_for_status()
-    print(json.dumps(response.json(), indent=2, default=str))
     return response.json()['files']
 
 def download_and_upload_to_s3(
@@ -248,9 +251,6 @@ def glue_crawl(s3_targets:Union[List[str], str], database_name:str, table_prefix
     except ClientError as e:
         print(f"Error running Glue Crawler {crawler_name}: {e}")
 
-SEMANTICSCHOLAR_LATEST_RELEASE_ID = get_releases_and_metadata()
-print(f'SEMANTICSCHOLAR_LATEST_RELEASE_ID: {SEMANTICSCHOLAR_LATEST_RELEASE_ID}')
-time_logger.log('Semanticscholar latest release ID fetched')
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--runtype", type=str, default='dev')
@@ -272,6 +272,41 @@ elif RUNTYPE == 'prod':
 else:
     raise ValueError('Argument --runtype should be either "dev" or "prod" (without quotes).')
 
+time_logger.log('testblock 1')
+
+SEMANTICSCHOLAR_LATEST_RELEASE_ID = get_releases_and_metadata()
+print(f'SEMANTICSCHOLAR_LATEST_RELEASE_ID: {SEMANTICSCHOLAR_LATEST_RELEASE_ID}')
+time_logger.log('Semanticscholar latest release ID fetched')
+
+dataset_id = 's2orc'
+release_id = '2025-08-12'
+s2orc_file_urls = get_dataset_download_urls(release_id, dataset_id)
+print('len(s2orc_file_urls)', len(s2orc_file_urls))
+time_logger.log('Semanticscholar URLS downloaded')
+
+min_index = 0
+max_index = 2
+process_files(
+    file_urls=s2orc_file_urls,
+    dataset_id=dataset_id,
+    target_bucket=config.DEFAULT_S3_BUCKET_NAME,
+    target_s3_prefix='01_raw/semanticscholar',
+    force_overwrite=True,
+    min_index=min_index,
+    max_index=max_index
+)
+
+time_logger.log('Semanticscholar files downloaded')
+download_time_per_file = time_logger.timelog[-1]['since_last'] / (max_index - min_index)
+print('download_time_per_file: ', download_time_per_file)
+
+glue_crawl(
+    s3_targets=[f's3://{config.DEFAULT_S3_BUCKET_NAME}/01_raw/semanticscholar/'],
+    database_name='01_raw',
+    table_prefix='semanticscholar_',
+    aws_region=config.AWS_REGION
+)
+time_logger.log('Semanticscholar glue crawl done')
 
 utils.ensure_path(PROCESSING_FILEPATH_INPUT)
 utils.ensure_path(PROCESSING_FILEPATH_OUTPUT)
@@ -292,25 +327,6 @@ with open(target_filepath, "w", encoding='utf-8') as results_file:
         f'args.test_argument_key_02: {args.test_argument_key_02}'
     ]))
 
-
-dataset_id = 's2orc'
-release_id = '2025-08-12'
-s2orc_file_urls = get_dataset_download_urls(release_id, dataset_id)
-process_files(
-    file_urls=s2orc_file_urls,
-    dataset_id=dataset_id,
-    target_bucket=config.DEFAULT_S3_BUCKET_NAME,
-    target_s3_prefix='01_raw/semanticscholar',
-    force_overwrite=False,
-    min_index=0,
-    max_index=100
-)
-glue_crawl(
-    s3_targets=[f's3://{config.DEFAULT_S3_BUCKET_NAME}/01_raw/semanticscholar/'],
-    database_name='01_raw',
-    table_prefix='semanticscholar_',
-    aws_region=config.AWS_REGION
-)
-
+time_logger.log('testblock 2')
 
 time_logger.log('DONE')
