@@ -85,7 +85,8 @@ def download_and_upload_to_s3(
     target_bucket:str,
     target_s3_prefix:str='01_raw',
     aws_region:str="eu-west-2",
-    force_overwrite:bool=False
+    force_overwrite:bool=False,
+    use_tqdm:bool=False
 )-> None:
     """
     Downloads a file from a signed S3 URL and uploads it to another S3 bucket.
@@ -126,13 +127,18 @@ def download_and_upload_to_s3(
         response = requests.get(url, stream=True)
         response.raise_for_status()
         total_size = int(response.headers.get('content-length', 0))  # Get the total file size
-    
-        with open(local_file, "wb") as file, tqdm(
-            total=total_size, unit="B", unit_scale=True, desc="Downloading"
-        ) as progress_bar:
-            for chunk in response.iter_content(chunk_size=8192):
-                file.write(chunk)
-                progress_bar.update(len(chunk))  # Update the progress bar
+
+        if use_tqdm: 
+            with open(local_file, "wb") as file, tqdm(
+                total=total_size, unit="B", unit_scale=True, desc="Downloading"
+            ) as progress_bar:
+                for chunk in response.iter_content(chunk_size=8192):
+                    file.write(chunk)
+                    progress_bar.update(len(chunk))  # Update the progress bar
+        else:
+            with open(local_file, "wb") as file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    file.write(chunk)
         print(f"File downloaded: {local_file}")
     except Exception as e:
         print(f"Error downloading file: {e}")
@@ -157,6 +163,7 @@ def process_files(
     target_bucket:str,
     target_s3_prefix:str='01_raw',
     force_overwrite:bool=False,
+    use_tqdm:bool=False,
     min_index:int=0,
     max_index:int=100000,
     aws_region:str="eu-west-2"
@@ -187,7 +194,8 @@ def process_files(
                 target_bucket=target_bucket,
                 target_s3_prefix=target_s3_prefix,
                 aws_region=aws_region,
-                force_overwrite=force_overwrite
+                force_overwrite=force_overwrite,
+                use_tqdm=use_tqdm
             )
         counter += 1
     print('DONE')
@@ -265,10 +273,12 @@ if RUNTYPE == 'dev':
     PROCESSING_FILEPATH_PREFIX = '_dev_processing'
     PROCESSING_FILEPATH_INPUT = os.path.join(script_dir, f'{PROCESSING_FILEPATH_PREFIX}/input/data/')
     PROCESSING_FILEPATH_OUTPUT = os.path.join(script_dir, f'{PROCESSING_FILEPATH_PREFIX}/output/results/')
+    USE_TQDM = True
 elif RUNTYPE == 'prod':
     PROCESSING_FILEPATH_PREFIX = config.DEFAULT_PROCESSING_FILEPATH_PREFIX
     PROCESSING_FILEPATH_INPUT = f'{PROCESSING_FILEPATH_PREFIX}/input/data/'
     PROCESSING_FILEPATH_OUTPUT = f'{PROCESSING_FILEPATH_PREFIX}/output/results/'
+    USE_TQDM = False
 else:
     raise ValueError('Argument --runtype should be either "dev" or "prod" (without quotes).')
 
@@ -292,6 +302,7 @@ process_files(
     target_bucket=config.DEFAULT_S3_BUCKET_NAME,
     target_s3_prefix='01_raw/semanticscholar',
     force_overwrite=True,
+    use_tqdm=USE_TQDM,
     min_index=min_index,
     max_index=max_index
 )
