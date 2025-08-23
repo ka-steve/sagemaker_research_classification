@@ -262,7 +262,7 @@ def glue_crawl(s3_targets:Union[List[str], str], database_name:str, table_prefix
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--runtype", type=str, default='dev')
-parser.add_argument("--test-argument-key-01", type=str, default='test-argument-default-value-01')
+parser.add_argument("--process-files-force-overwrite", type=bool, default=False)
 parser.add_argument("--test-argument-key-02", type=str, default='test-argument-default-value-02')
 args, _ = parser.parse_known_args()
 RUNTYPE = args.runtype
@@ -301,7 +301,7 @@ process_files(
     dataset_id=dataset_id,
     target_bucket=config.DEFAULT_S3_BUCKET_NAME,
     target_s3_prefix='01_raw/semanticscholar',
-    force_overwrite=True,
+    force_overwrite=args.process_files_force_overwrite,
     use_tqdm=USE_TQDM,
     min_index=min_index,
     max_index=max_index

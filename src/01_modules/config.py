@@ -10,6 +10,7 @@ AWS_REGION = "eu-west-2" # London
 DEFAULT_S3_BUCKET_NAME = "sagemaker-research-methodology-extraction"
 DEFAULT_S3_BUCKET_ROOT = f's3://{DEFAULT_S3_BUCKET_NAME}'
 
+
 DEFAULT_PROCESSING_FILEPATH_PREFIX = '/opt/ml/processing'
 
 SEMANTICSCHOLAR_API_BASE_URL = "https://api.semanticscholar.org/datasets/v1/release"
