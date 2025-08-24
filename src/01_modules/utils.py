@@ -2,7 +2,7 @@ import json
 import boto3
 import time
 from botocore.exceptions import ClientError
-from typing import Union
+from typing import Union, List, Optional
 from datetime import datetime, timezone
 
 
@@ -98,6 +98,70 @@ def ensure_path(path:str)->None:
     print(f'ensure_path({path})')
     Path(path).mkdir(parents=True, exist_ok=True)
 
+
+def glue_crawl(s3_targets:Union[List[str], str], database_name:str, table_prefix:str, aws_region:str='eu-west-2', crawler_name:Optional[str]=None)->None:
+    """
+    Creates (or updates) and starts an AWS Glue Crawler to crawl the specified S3 paths.
+
+    Args:
+        s3_targets (Union[List[str], str]): S3 paths to crawl. Can be a single path or a list of paths.
+        database_name (str): The name of the Glue database where the table should be created.
+        table_prefix (str): The prefix for the table name in the Glue database.
+        aws_region (str): The AWS region where the Glue Crawler is located.
+
+    Returns:
+        None
+    """
+    glue_client = boto3.client('glue', region_name=aws_region)
+
+    if isinstance(s3_targets, str):
+        crawler_targets = [{'Path': s3_targets}]
+    elif isinstance(s3_targets, list):
+        crawler_targets = [{'Path': target} for target in s3_targets]
+    else:
+        raise ValueError('s3_targets must be a string or a list of strings.')
+    
+    print(f'Starting to crawl S3 targets: {crawler_targets} into database: {database_name} with table prefix: {table_prefix}')
+
+    if crawler_name is None:
+        crawler_name = f'crawler_{database_name}_{table_prefix}'
+    
+    crawler_config = {
+        'Name': crawler_name,
+        'Role': 'AWSGlueServiceRoleDefault',
+        'DatabaseName': database_name,
+        'Targets': {
+            'S3Targets': crawler_targets
+        },
+        'TablePrefix': table_prefix
+    }
+
+    # Attempt to create a glue crawler or update it if it already exists.
+    try:
+        glue_client.create_crawler(**crawler_config)
+    except:
+        glue_client.update_crawler(**crawler_config)
+        
+    try:
+        print(f'Starting Glue Crawler: {crawler_name}...')
+        glue_client.start_crawler(Name=crawler_name)
+        glue_is_running = True
+        # Wait for the crawler to complete
+        while glue_is_running:
+            response = glue_client.get_crawler(Name=crawler_name)
+            state = response['Crawler']['State']
+            if state == 'READY':
+                print(f'Glue Crawler {crawler_name} has completed.')
+                glue_is_running = False
+            elif state in ['RUNNING', 'STOPPING']:
+                print(f'Glue Crawler {crawler_name} is still running...')
+            else:
+                print(f'Unexpected state for Glue Crawler {crawler_name}: {state}')
+                break
+            time.sleep(10)  # Wait for 10 seconds before checking again
+
+    except ClientError as e:
+        print(f'Error running Glue Crawler {crawler_name}: {e}')
 
 # If loading this module after kernel start with the usual way:
 # # import os
