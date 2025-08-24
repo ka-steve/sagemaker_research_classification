@@ -231,28 +231,28 @@ time_logger.log('Processed arguments')
 # print(f'SEMANTICSCHOLAR_LATEST_RELEASE_ID: {SEMANTICSCHOLAR_LATEST_RELEASE_ID}')
 # time_logger.log('Semanticscholar latest release ID fetched')
 
-
-ss_ingestion = SemanticScholarIngestion(
-    release_id=args.release_id,
-    dataset_id=args.dataset_id,
-    target_bucket=config.DEFAULT_S3_BUCKET_NAME,
-    target_s3_prefix='01_data/01_raw/semanticscholar',
-    force_overwrite=args.force_overwrite,
-    use_tqdm=USE_TQDM,
-    aws_region=config.AWS_REGION,
-    min_index=args.min_index,
-    max_index=args.max_index
-)
+# TODO: uncomment
+# ss_ingestion = SemanticScholarIngestion(
+#     release_id=args.release_id,
+#     dataset_id=args.dataset_id,
+#     target_bucket=config.DEFAULT_S3_BUCKET_NAME,
+#     target_s3_prefix='01_data/01_raw/semanticscholar',
+#     force_overwrite=args.force_overwrite,
+#     use_tqdm=USE_TQDM,
+#     aws_region=config.AWS_REGION,
+#     min_index=args.min_index,
+#     max_index=args.max_index
+# )
 
 time_logger.log('Semanticscholar files downloaded')
 
-# TODO: uncomment
-# utils.glue_crawl(
-#     s3_targets=[f's3://{config.DEFAULT_S3_BUCKET_NAME}/01_data/01_raw/semanticscholar/'],
-#     database_name='01_raw',
-#     table_prefix='semanticscholar_',
-#     aws_region=config.AWS_REGION
-# )
+
+utils.glue_crawl(
+    s3_targets=[f's3://{config.DEFAULT_S3_BUCKET_NAME}/01_data/01_raw/semanticscholar/'],
+    database_name='01_raw',
+    table_prefix='semanticscholar_',
+    aws_region=config.AWS_REGION
+)
 time_logger.log('Semanticscholar glue crawl done')
 
 # utils.ensure_path(PROCESSING_FILEPATH_INPUT)

@@ -1,9 +1,12 @@
 import json
 import boto3
 import time
+import os
+import awswrangler as wr
 from botocore.exceptions import ClientError
 from typing import Union, List, Optional
 from datetime import datetime, timezone
+import config
 
 
 def version_test()->str:
@@ -162,6 +165,51 @@ def glue_crawl(s3_targets:Union[List[str], str], database_name:str, table_prefix
 
     except ClientError as e:
         print(f'Error running Glue Crawler {crawler_name}: {e}')
+
+def create_table_from_sql_file(
+    database_name:str, 
+    table_name:str, 
+    overwrite_strategy:str='fail', # options: fail, overwrite, ignore
+    wait:bool=True,
+    s3_parent_target_path:Optional[str]=None
+)->None:
+    sql_file_path = os.path.join('sql', f'{database_name}__{table_name}.sql')
+    if not os.path.exists(sql_file_path):
+        raise ValueError(f'ERROR: SQL file {sql_file_path} does not exist.')
+    
+    if s3_parent_target_path is None:
+        s3_parent_target_path = config.S3_STG_DATA_PATH
+        
+    wr.catalog.create_database(name=database_name, exist_ok=True)
+    
+    table_exists = wr.catalog.does_table_exist(database=database_name, table=table_name)
+    if table_exists:
+        if overwrite_strategy == 'fail':
+            raise ValueError(f'ERROR: Table {database_name}.{table_name} already exists.')
+        elif overwrite_strategy == 'ignore':
+            print(f'Table {database_name}.{table_name} already exists. Ignoring since overwrite_strategy=="ignore".')
+            return
+        elif overwrite_strategy == 'overwrite':
+            print(f'Table {database_name}.{table_name} already exists. Overwriting since overwrite_strategy=="overwrite".')
+            print('Deleting table from Glue Catalog', database_name, table_name)
+            wr.catalog.delete_table_if_exists(database=database_name, table=table_name)
+        else:
+            raise ValueError(f'Invalid overwrite_strategy: {overwrite_strategy}. Choose from "fail", "overwrite", "ignore".')
+    if overwrite_strategy == 'overwrite':
+        print('Deleting S3 objects from', f'{s3_parent_target_path}/{table_name}/')
+        wr.s3.delete_objects(path=f'{s3_parent_target_path}/{table_name}/')
+        
+    with open(sql_file_path, 'r') as file:
+        sql_query = file.read()
+        
+    print('s3_parent_target_path: ', s3_parent_target_path)
+    wr.athena.create_ctas_table(
+        sql=sql_query,
+        database=database_name,
+        wait=wait,
+        ctas_table=table_name,
+        s3_output=s3_parent_target_path
+    )
 
 # If loading this module after kernel start with the usual way:
 # # import os
