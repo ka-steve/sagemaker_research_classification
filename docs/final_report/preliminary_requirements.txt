@@ -1,0 +1,50 @@
+https://www.coursera.org/learn/uol-cm3070-computer-science-final-project/assignment-submission/tyoT6/topic-1-checklist/attempt
+Have you chosen a project template?
+Have you researched related work?
+Have you prepared a pitch video?
+
+https://www.coursera.org/learn/uol-cm3070-computer-science-final-project/assignment-submission/3oAHO/topic-2-checklist/attempt
+Have you clarified your project idea based on background research?
+Have you filled out the ethics form?
+Have you made contact with your tutor?
+Have you completed your project proposal video? 
+
+https://www.coursera.org/learn/uol-cm3070-computer-science-final-project/assignment-submission/ozKot/topic-3-checklist/attempt
+Have you researched prior work and the appropriate academic literature?
+Have you written a literature review?
+Have you properly cited all the literature you reference?
+Have you created an appropriate reference list for all of your citations?
+Did you need to include a bibliography?
+
+https://www.coursera.org/learn/uol-cm3070-computer-science-final-project/assignment-submission/BUXOk/topic-4-checklist/attempt
+Have you written a project design?
+Have you written a work plan?
+Have you written an evaluation plan?
+
+https://www.coursera.org/learn/uol-cm3070-computer-science-final-project/assignment-submission/zwbQq/topic-6-checklist/attempt
+Have you set up your testing framework?
+Have you set up your development environment?
+Have you developed a first iteration of your project?
+Have you written up your first iteration?
+
+https://www.coursera.org/learn/uol-cm3070-computer-science-final-project/assignment-submission/XwQmk/topic-7-checklist/attempt
+Have you appropriately tested your first iteration?
+Have you developed a second iteration?
+Have you submitted a prototype for peer testing?
+
+https://www.coursera.org/learn/uol-cm3070-computer-science-final-project/assignment-submission/Cu4Kk/topic-8-checklist/attempt
+Have you developed a new iteration?
+Have you tested you latest iteration?
+Have you incorporated the feedback from the preliminary report into the draft report you are working on?
+
+https://www.coursera.org/learn/uol-cm3070-computer-science-final-project/assignment-submission/qgZSM/topic-9-checklist/attempt
+Have you developed and tested another iteration?
+Have you considered how you will present your project as a portfolio piece for your future career?
+Have you submitted a prototype for peer testing?
+Have you completed and submitted your draft report?
+
+https://www.coursera.org/learn/uol-cm3070-computer-science-final-project/assignment-submission/djTuM/topic-10-checklist/attempt
+Have you planned your final evaluation?
+Have you planned your video demo?
+Have you planned how you will complete the development and writing of your project in the final weeks?
+
