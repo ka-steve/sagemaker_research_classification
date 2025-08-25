@@ -62,12 +62,12 @@ print (args)
 
 time_logger.log('Processed arguments')
 
-# sync_aws_buckets(
-#     source_bucket=config.OPENALEX_SOURCE_S3_BUCKET_NAME,
-#     # source_prefix='data/publishers', # testing with a smaller subset first
-#     target_bucket=config.DEFAULT_S3_BUCKET_NAME,
-#     target_prefix=config.OPENALEX_S3_RAW_DATA_PREFIX,
-# )
+sync_aws_buckets(
+    source_bucket=config.OPENALEX_SOURCE_S3_BUCKET_NAME,
+    # source_prefix='data/publishers', # testing with a smaller subset first
+    target_bucket=config.DEFAULT_S3_BUCKET_NAME,
+    target_prefix=config.OPENALEX_S3_RAW_DATA_PREFIX,
+)
 
 time_logger.log('OpenAlex files synced to target bucket')
 
@@ -93,12 +93,6 @@ for entity in ['authors', 'concepts', 'domains', 'fields', 'funders', 'instituti
     )
     time_logger.log(f'OpenAlex {entity} glue crawl done')
 
-# utils.glue_crawl(
-#     s3_targets=[f'{openalex_inner_data_prefix}/authors'],
-#     database_name='01_raw',
-#     table_prefix='openalex_',
-#     aws_region=config.AWS_REGION
-# )
 time_logger.log('OpenAlex glue crawl done')
 
 time_logger.log('DONE')
