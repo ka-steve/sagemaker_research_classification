@@ -62,12 +62,12 @@ print (args)
 
 time_logger.log('Processed arguments')
 
-sync_aws_buckets(
-    source_bucket=config.OPENALEX_SOURCE_S3_BUCKET_NAME,
-    # source_prefix='data/publishers', # testing with a smaller subset first
-    target_bucket=config.DEFAULT_S3_BUCKET_NAME,
-    target_prefix=config.OPENALEX_S3_RAW_DATA_PREFIX,
-)
+# sync_aws_buckets(
+#     source_bucket=config.OPENALEX_SOURCE_S3_BUCKET_NAME,
+#     # source_prefix='data/publishers', # testing with a smaller subset first
+#     target_bucket=config.DEFAULT_S3_BUCKET_NAME,
+#     target_prefix=config.OPENALEX_S3_RAW_DATA_PREFIX,
+# )
 
 time_logger.log('OpenAlex files synced to target bucket')
 
@@ -76,7 +76,7 @@ s3_client = boto3.client('s3')
 openalex_inner_data_prefix = f'{config.OPENALEX_S3_RAW_DATA_PREFIX}/data'
 openalex_inner_data_path = f's3://{config.DEFAULT_S3_BUCKET_NAME}/{openalex_inner_data_prefix}'
 for entity in ['authors', 'concepts', 'domains', 'fields', 'funders', 'institutions', 'merged_ids', 'publishers', 'sources', 'subfields', 'topics', 'works']:
-# for entity in ['publishers']:
+# for entity in ['works']:
     menifest_file_path = f'{openalex_inner_data_prefix}/{entity}/manifest'
     try:
         response = s3_client.delete_object(Bucket=config.DEFAULT_S3_BUCKET_NAME, Key=menifest_file_path)

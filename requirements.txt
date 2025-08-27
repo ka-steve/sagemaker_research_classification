@@ -10,3 +10,4 @@ jupyterlab==4.4.6
 scikit-learn==1.2.0
 awswrangler==3.12.1
 pyarrow==20.0.0
+smart-open[s3]==7.3.0
