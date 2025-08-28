@@ -1,13 +1,1 @@
-pandas==2.3.1
-sagemaker==2.250.0 # The newest version at the time
-transformers==4.49.0 # The newest version sagemaker==2.250.0 supports, but only in Python 3.11
-datasets==4.0.0
-accelerate==1.10.0
-torch==2.5.1
-ipywidgets==8.1.7
-ipykernel==6.30.1
-jupyterlab==4.4.6
-scikit-learn==1.2.0
-awswrangler==3.12.1
-pyarrow==20.0.0
 smart-open[s3]==7.3.0
