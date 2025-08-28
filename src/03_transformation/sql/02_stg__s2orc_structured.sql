@@ -94,4 +94,3 @@ FROM
     extracted_fields_01
 )
 SELECT * FROM s2orc_structured
-LIMIT 10

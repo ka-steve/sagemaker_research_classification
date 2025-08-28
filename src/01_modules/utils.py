@@ -3,17 +3,32 @@ import boto3
 import time
 import os
 import awswrangler as wr
+import pandas as pd
 from botocore.exceptions import ClientError
 from typing import Union, List, Optional
 from datetime import datetime, timezone
 import config
 
 
-def version_test()->str:
+def version_test() -> str:
     # Helper util to confirm that the last version of the helper_utils.py is loaded
     version = '0.2.12'
     # print(version)
     return version
+
+
+def pd_set_options(rows=500, cols=1000):
+    # Don't hide any columns when printing
+    pd.set_option("display.max_columns", None)
+    # Show all rows if there are no more than:
+    pd.set_option("display.max_rows", rows)
+    # ...otherwise show this many rows:
+    pd.set_option("display.min_rows", rows)
+    # Show the full content of columns:
+    pd.set_option("display.max_colwidth", cols)
+    # Display the table assuming this screen width
+    pd.set_option("display.width", 800)
+
 
 class TimeLogger:
     def __init__(self):

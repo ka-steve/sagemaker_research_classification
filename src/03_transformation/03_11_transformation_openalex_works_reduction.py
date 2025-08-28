@@ -34,10 +34,12 @@ time_logger = utils.TimeLogger()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--runtype', type=str, default='dev')
-parser.add_argument('--file-limit', type=int, default=100)
+parser.add_argument('--file-min-limit', type=int, default=0) # inclusive
+parser.add_argument('--file-max-limit', type=int, default=100) # exclusive
 args, _ = parser.parse_known_args()
 RUNTYPE = args.runtype
 
+print(args.file_min_limit, args.file_max_limit)
 print (args)
 
 if RUNTYPE == 'dev':
@@ -57,11 +59,13 @@ time_logger.log('Processed arguments')
 
 
 file_counter = 0
-file_limit = args.file_limit
+file_min_limit = args.file_min_limit
+file_max_limit = args.file_max_limit
 total_record_counter = 0
 s3_client = boto3.client('s3')
-files = s3_client.list_objects(Bucket=config.DEFAULT_S3_BUCKET_NAME, Prefix='01_data/01_raw/openalex/data/works_unpartitioned/', Delimiter='/', MaxKeys=file_limit)
+files = s3_client.list_objects(Bucket=config.DEFAULT_S3_BUCKET_NAME, Prefix='01_data/01_raw/openalex/data/works_unpartitioned/', Delimiter='/', MaxKeys=file_max_limit)
 
+print("len(files['Contents'])", len(files['Contents']))
 
 openalex_works_source_prefix = f'{config.OPENALEX_S3_RAW_DATA_PREFIX}/data/works_unpartitioned/'
 openalex_works_source_path = f's3://{config.DEFAULT_S3_BUCKET_NAME}/{openalex_works_source_prefix}'
@@ -189,8 +193,12 @@ def reduce_line(source_filepath:str, line_counter:int, line:str)->str:
                     reduced_line[f'{key}_{subkey}_{subsubkey}'] = line_dict[key][subkey][subsubkey]
     return json.dumps(reduced_line, default=str)
 
+# max_line_length_index = None
+# max_line_length_value = 0
+# max_line_length_line = ''
+
 for file_ref in files['Contents']:
-    if file_counter < file_limit:
+    if (file_counter >= file_min_limit) and (file_counter < file_max_limit):
         line_counter = 0
         source_filepath = file_ref['Key']
         target_filepath = source_filepath.replace('works_unpartitioned', 'works_reduced')
@@ -199,9 +207,14 @@ for file_ref in files['Contents']:
         with smart_open.open(f's3://{config.DEFAULT_S3_BUCKET_NAME}/{source_filepath}') as file_source:
             with smart_open.open(target_file_location, 'w') as file_target:
                 for line in file_source:
+                    # if max_line_length_value < len(line):
+                    #     max_line_length_index = line_counter
+                    #     max_line_length_value = len(line)
+                    #     max_line_length_line = line
                     reduced_line = reduce_line(source_filepath, line_counter, line)
                     if reduced_line != '':
-                        file_target.write(reduced_line)
+                        file_target.write(reduced_line+'\n')
+                        pass
     
                     # print(f'{source_filename}:{line_counter:06}|')
                     # print(reduced_line)
@@ -209,7 +222,8 @@ for file_ref in files['Contents']:
                     line_counter += 1
                     total_record_counter += 1
         print(f'done: {source_filename}, {line_counter}/{total_record_counter}')
-        file_counter += 1
+        # print(max_line_length_index, max_line_length_value, max_line_length_line)
+    file_counter += 1
 
 
 
