@@ -6,8 +6,8 @@ raw_arxiv_metadata AS
 base_arxiv_metadata AS 
 (
     SELECT
-        id AS arxiv_id, 
-        doi AS doi_id,
+        id AS id_arxiv, 
+        doi AS id_doi,
         title,
         abstract,
         -- Converting license definitions to the same format as SemanticScholar
