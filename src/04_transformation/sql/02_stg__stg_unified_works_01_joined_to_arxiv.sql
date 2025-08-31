@@ -1,62 +1,47 @@
 WITH
-raw_semanticscholar_s2orcv2 AS 
-(
-    SELECT * FROM "01_raw".semanticscholar_s2orc_v2
+stg_semanticscholar_combined_works_ AS (
+    SELECT * FROM "02_stg".stg_semanticscholar_combined_works
 ),
-base_semanticscholar_s2orcv2_step01 AS 
-(
-    SELECT
-        corpusid AS id_semanticscholar,
-        JSON_EXTRACT_SCALAR(CAST(openaccessinfo AS JSON), '$.externalids.mag') AS id_mag,
-        JSON_EXTRACT_SCALAR(CAST(openaccessinfo AS JSON), '$.externalids.doi') AS id_doi,
-        JSON_EXTRACT_SCALAR(CAST(openaccessinfo AS JSON), '$.externalids.arxiv') AS id_arxiv,
-        title,
-        JSON_EXTRACT_SCALAR(CAST(openaccessinfo AS JSON), '$.license') AS original_license,
-        JSON_EXTRACT_SCALAR(CAST(openaccessinfo AS JSON), '$.url') AS source_url,
-        JSON_EXTRACT_SCALAR(CAST(openaccessinfo AS JSON), '$.status') AS openaccess_status,
-        JSON_EXTRACT_SCALAR(CAST(body AS JSON), '$.text') AS content_text,
-        JSON_EXTRACT_SCALAR(CAST(body AS JSON), '$.annotations.paragraph') AS annotations_paragraph,
-        JSON_EXTRACT_SCALAR(CAST(body AS JSON), '$.annotations.section_header') AS annotations_section_header
-     FROM 
-         raw_semanticscholar_s2orcv2
+base_arxiv_metadata_ AS (
+    SELECT * FROM "02_stg".base_arxiv_metadata
 ),
-base_semanticscholar_s2orcv2 AS (
+stg_unified_works_01_joined_to_arxiv_step01 AS (
     SELECT
-        id_semanticscholar,
-        id_mag,
-        id_doi,
-        id_arxiv,
-        title,
-        source_url,
-        openaccess_status,
-        content_text,
-        annotations_paragraph,
-        annotations_section_header,
-        CASE
-            -- These licenses might or might not be usable just because they are openly accessible, so we are assuming they are not
-            WHEN 
-                original_license IS NULL OR
-                original_license IN(
-                    'acs-specific: authorchoice/editors choice usage agreement',
-                    'elsevier-specific: oa user license',
-                    'other-oa',
-                    'publisher-specific, author manuscript: http://academic.oup.com/journals/pages/about_us/legal/notices',
-                    'publisher-specific-oa',
-                    'unspecified-oa',
-                    'Open Government Licence - Canada',
-                    'publisher-specific, author manuscript',
-                    'implied-oa',
-                    'publisher-specific, author manuscript: http://rsc.li/journals-terms-of-use',
-                    'publisher-specific, author manuscript: http://onlinelibrary.wiley.com/termsAndConditions',
-                    'publisher-specific, author manuscript: http://onlinelibrary.wiley.com/termsAndConditions#am',
-                    'publisher-specific license'
-                ) 
-            THEN 'unknown-reusability'
-            -- A few public domain licenses were abbreviated
-            WHEN original_license = 'pd' THEN 'public-domain'
-            ELSE original_license
-        END AS license
-     FROM 
-         base_semanticscholar_s2orcv2_step01
+        stg_semanticscholar_combined_works_.id_semanticscholar,
+        stg_semanticscholar_combined_works_.id_mag,
+        stg_semanticscholar_combined_works_.id_doi,
+        stg_semanticscholar_combined_works_.id_arxiv,
+        stg_semanticscholar_combined_works_.title,
+        stg_semanticscholar_combined_works_.source_url,
+        stg_semanticscholar_combined_works_.openaccess_status,
+        stg_semanticscholar_combined_works_.content_text,
+        stg_semanticscholar_combined_works_.annotations_paragraph,
+        stg_semanticscholar_combined_works_.annotations_section_header,
+        stg_semanticscholar_combined_works_.content_abstract,
+        stg_semanticscholar_combined_works_.publication_year,
+        stg_semanticscholar_combined_works_.publication_date,
+        --stg_semanticscholar_combined_works_.license AS original_semanticscholar_license,
+        --base_arxiv_metadata_.license AS arxiv_license,
+        COALESCE(
+            stg_semanticscholar_combined_works_.license,
+            base_arxiv_metadata_.license,
+            'unknown-reusability' -- If there's no info on it on either S2 or Arxiv, we consider it not usable 
+        ) AS license
+    FROM
+        stg_semanticscholar_combined_works_
+    LEFT JOIN
+        base_arxiv_metadata_
+    ON
+        stg_semanticscholar_combined_works_.id_arxiv = base_arxiv_metadata_.id_arxiv
+),
+stg_unified_works_01_joined_to_arxiv AS (
+SELECT
+    *,
+    CASE
+        WHEN license IN ('public-domain', 'mit', 'gpl', 'CC0', 'CCBY', 'CCBYNC') THEN 1
+        ELSE 0
+    END AS license_allows_derivative_reuse
+FROM
+    stg_unified_works_01_joined_to_arxiv_step01
 )
-SELECT * FROM base_semanticscholar_s2orcv2
+SELECT * FROM stg_unified_works_01_joined_to_arxiv

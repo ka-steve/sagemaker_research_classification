@@ -35,7 +35,6 @@ base_semanticscholar_s2orcv2 AS (
         CASE
             -- These licenses might or might not be usable just because they are openly accessible, so we are assuming they are not
             WHEN 
-                original_license IS NULL OR
                 original_license IN(
                     'acs-specific: authorchoice/editors choice usage agreement',
                     'elsevier-specific: oa user license',
@@ -51,7 +50,7 @@ base_semanticscholar_s2orcv2 AS (
                     'publisher-specific, author manuscript: http://onlinelibrary.wiley.com/termsAndConditions#am',
                     'publisher-specific license'
                 ) 
-            THEN 'unknown-reusability'
+            THEN NULL -- 'unknown-reusability' TODO: convert NULLs to unknown-reusability after the model is joined with arxiv license information
             -- A few public domain licenses were abbreviated
             WHEN original_license = 'pd' THEN 'public-domain'
             ELSE original_license
