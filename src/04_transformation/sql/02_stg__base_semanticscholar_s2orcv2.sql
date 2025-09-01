@@ -24,7 +24,7 @@ base_semanticscholar_s2orcv2 AS (
     SELECT
         id_semanticscholar,
         id_mag,
-        id_doi,
+        LOWER(id_doi) AS id_doi,
         id_arxiv,
         title,
         source_url,

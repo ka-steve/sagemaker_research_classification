@@ -7,7 +7,7 @@ base_openalex_works_reduced AS
 (
     SELECT
         id_openalex_short AS id_openalex,
-        id_doi_short AS id_doi,
+        LOWER(id_doi_short) AS id_doi,
         title,
         "language",
         COALESCE(primary_topic_short_id, primary_topic_long_id) AS primary_topic_id,
