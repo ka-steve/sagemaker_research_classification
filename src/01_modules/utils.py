@@ -223,7 +223,7 @@ def create_table_from_sql_file(
         database=database_name,
         wait=wait,
         ctas_table=table_name,
-        s3_output=s3_parent_target_path
+        s3_output=s3_parent_target_path,
     )
 
 # If loading this module after kernel start with the usual way:
