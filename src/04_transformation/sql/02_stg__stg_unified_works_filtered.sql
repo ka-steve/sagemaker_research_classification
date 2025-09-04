@@ -29,7 +29,7 @@ metadata_tagged AS (
         *,
         CASE 
             WHEN bucket_10p = 1 THEN 'test'
-            WHEN bucket_10p = 2 THEN 'validate'
+            WHEN bucket_10p = 2 THEN 'validation'
             ELSE 'train'
         END AS subset --80-10-10 split
     FROM

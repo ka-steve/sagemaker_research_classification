@@ -9,6 +9,6 @@ core_unified_works_subset AS (
     FROM
         core_unified_works
     WHERE
-        subset = 'test'
+        subset = 'validation'
 )
 SELECT * FROM core_unified_works_subset
