@@ -14,3 +14,4 @@ smart-open[s3]==7.3.0
 peft==0.17.1
 evaluate==0.4.5
 lighteval==0.9.2
+s3fs==2025.3.0
