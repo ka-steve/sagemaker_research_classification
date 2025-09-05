@@ -15,7 +15,7 @@ subfields_grouped AS (
 ),
 stg_subfields AS (
     SELECT 
-        ROW_NUMBER() OVER(ORDER BY openalex_primary_topic_subfield_count DESC) AS openalex_primary_topic_subfield_index,
+        (ROW_NUMBER() OVER(ORDER BY openalex_primary_topic_subfield_count DESC)) -1 AS openalex_primary_topic_subfield_index,
         openalex_primary_topic_subfield_id,
         openalex_primary_topic_subfield_display_name,
         openalex_primary_topic_subfield_count
