@@ -1,16 +1,14 @@
 WITH
--- Base models refreshed with LOWER DOI
-core_unified_works AS (
-    SELECT * FROM "03_core".unified_works
+stg_subfields_ AS (
+    SELECT * FROM "02_stg".stg_subfields
 ),
 subfields AS (
     SELECT
-        subfield_index,
-        subfield_display_name
+        openalex_primary_topic_subfield_index AS subfield_index,
+        openalex_primary_topic_subfield_id AS subfield_original_id,
+        openalex_primary_topic_subfield_display_name AS subfield_display_name,
+        openalex_primary_topic_subfield_count AS subfield_count
     FROM
-        core_unified_works
-    GROUP BY
-        subfield_index,
-        subfield_display_name
+        stg_subfields_
 )
-SELECT * FROM subfields ORDER BY subfield_index
+SELECT * FROM subfields

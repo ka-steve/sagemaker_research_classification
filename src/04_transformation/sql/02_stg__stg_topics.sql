@@ -19,7 +19,7 @@ topics_grouped AS (
 ),
 stg_topics AS (
     SELECT 
-        ROW_NUMBER() OVER(ORDER BY openalex_primary_topic_count DESC) AS openalex_primary_topic_index,
+        (ROW_NUMBER() OVER(ORDER BY openalex_primary_topic_count DESC)) -1 AS openalex_primary_topic_index,
         openalex_primary_topic_id,
         openalex_primary_topic_display_name,
         openalex_primary_topic_count,
