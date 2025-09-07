@@ -5,3 +5,4 @@ __pycache__
 _dev_processing
 _code
 _tar
+**/*wandb/

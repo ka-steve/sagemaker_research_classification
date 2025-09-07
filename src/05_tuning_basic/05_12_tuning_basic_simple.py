@@ -3,7 +3,6 @@ import boto3
 import evaluate
 import importlib
 import json
-import lighteval
 import os
 import pathlib
 import requests
@@ -18,8 +17,6 @@ import numpy as np
 from botocore.exceptions import ClientError
 from datasets import load_dataset, DatasetDict, Dataset
 from datetime import datetime, timezone
-from IPython.display import display
-from peft import PeftModel, PeftConfig, get_peft_model, LoraConfig
 from sagemaker.huggingface.processing import HuggingFaceProcessor
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.processing import FrameworkProcessor
@@ -35,6 +32,7 @@ from transformers import (
     AutoConfig, 
     AutoModelForSequenceClassification,
     DataCollatorWithPadding,
+    PrinterCallback,
     TrainingArguments,
     Trainer
 )
@@ -58,10 +56,15 @@ if os.path.exists(modules_path_in_prod):
 import utils
 import config
 
+print('transformers.__version__', transformers.__version__)
+
 ##########################################################################################
 
 time_logger = utils.TimeLogger()
-wandb.login()
+wandb_api_key = utils.get_secret(region_name=config.AWS_REGION, secret_name='WeightsAndBiases')['api_key']
+wandb.login(key=wandb_api_key)
+boto3.setup_default_session(region_name=config.AWS_REGION)
+
 
 ##########################################################################################
 
@@ -174,11 +177,13 @@ tokenizer = AutoTokenizer.from_pretrained(args.model_name, add_prefix_space=True
 
 def tokenize_function(example):
     text = example[args.text_key_rename_to]
+    print(type(text), text[0:5])
     tokenizer.truncation_side = 'right'
     tokenized_inputs = tokenizer(
         text,
         return_tensors='np',
         truncation=True,
+        padding=True,
         max_length=512
     )
 
@@ -217,11 +222,12 @@ training_args = TrainingArguments(
     logging_dir=f'{args.output_data_dir}/logs',
     report_to='wandb',
     # logging_steps=5,
-    eval_strategy='epoch',
+    evaluation_strategy='epoch',
     # eval_strategy='steps',
     # eval_steps=20,
     # max_steps=100,
-    # save_steps=100
+    # save_steps=100,
+    disable_tqdm=True if RUNTYPE == 'prod' else False
 )
 
 trainer = Trainer(
@@ -230,9 +236,10 @@ trainer = Trainer(
     compute_metrics=compute_metrics,
     train_dataset=tokenized_dataset['train'],
     eval_dataset=tokenized_dataset['test'],
-    processing_class=tokenizer,
+    tokenizer=tokenizer,
     data_collator=data_collator,
 )
+
 time_logger.log('Trainer set up')
 
 ##########################################################################################

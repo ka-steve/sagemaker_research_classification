@@ -3,16 +3,11 @@ sagemaker
 transformers
 datasets
 accelerate
+evaluate
 torch
-ipywidgets
-ipykernel
-jupyterlab
 scikit-learn
 awswrangler
 pyarrow
 smart-open[s3]
-peft
-evaluate
-lighteval
 s3fs
 wandb

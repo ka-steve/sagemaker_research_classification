@@ -1,12 +1,18 @@
-import json
 import boto3
-import time
+import json
 import os
+import pathlib
+import shutil
+import tarfile
+import time
 import awswrangler as wr
 import pandas as pd
 from botocore.exceptions import ClientError
-from typing import Union, List, Optional
 from datetime import datetime, timezone
+from sagemaker import image_uris
+from sagemaker.session import get_execution_role
+from typing import Union, List, Optional
+
 import config
 
 
@@ -225,6 +231,163 @@ def create_table_from_sql_file(
         ctas_table=table_name,
         s3_output=s3_parent_target_path,
     )
+
+def create_supervised_multiclass_classification_training_job(
+    SCRIPT_FILEPATH,
+    MODEL_NAME,
+    INSTANCE_TYPE,
+    HF_DATASET_SUFFIX,
+    LABEL_TYPE,
+    TEXT_KEY,
+    SAMPLE,          # must be string
+    MAX_RUNTIME_S,
+    ENTRY_POINT='05_tuning_basic/05_12_tuning_basic_simple.py',
+    TEXT_KEY_RENAME_TO='text',
+    LABEL_KEY_RENAME_TO='label',
+    VOLUME_SIZE_GB=450,
+):
+
+    NOW = datetime.now().strftime('%m%d%H%M%S')
+    JOB_NAME = f'{MODEL_NAME.split("-")[0]}-{LABEL_TYPE}-{TEXT_KEY}-s{SAMPLE}-{NOW}'
+    SAGEMAKER_CLIENT = boto3.client('sagemaker', region_name=config.AWS_REGION)
+    S3_CLIENT = boto3.client('s3')
+    EXECUTION_ROLE = get_execution_role()
+    SOURCE_DIRPATH = SCRIPT_FILEPATH.parents[0]
+    ROOT_DIRPATH = SCRIPT_FILEPATH.parents[1]
+    TEMP_DIRPATH = pathlib.Path(f'./_code/{JOB_NAME}')
+    TAR_FILEPATH = pathlib.Path(f'./_tar/source-{JOB_NAME}.tar.gz')
+    ENV_VARS = {
+        'HUGGINGFACE_HUB_CACHE': '/tmp/.cache'
+    }
+
+    if TEMP_DIRPATH.parents[0].exists():
+        shutil.rmtree(TEMP_DIRPATH.parents[0])
+    TEMP_DIRPATH.mkdir(parents=True, exist_ok=True)
+
+    if TAR_FILEPATH.parents[0].exists():
+        shutil.rmtree(TAR_FILEPATH.parents[0])
+    TAR_FILEPATH.parents[0].mkdir(parents=True, exist_ok=True)
+
+    ignore_names = {'__pycache__', '.ipynb_checkpoints'}
+    for item in SOURCE_DIRPATH.iterdir():
+        name = item.name
+        if name in ignore_names:
+            continue
+        dest = TEMP_DIRPATH / name
+        if item.is_dir():
+            # print('item.is_dir()', item, dest)
+            for item2 in item.iterdir():
+                name2 = item2.name
+                if name2 in ignore_names:
+                    continue
+                dest2 = TEMP_DIRPATH / name / name2
+                if item2.is_dir():
+                    pass
+                else:
+                    dest.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(item2, dest2)
+        else:
+            shutil.copy2(item, dest)
+
+    shutil.copy2(ROOT_DIRPATH / 'requirements_train.txt', TEMP_DIRPATH / 'requirements.txt')
+
+    # Tar the temp_dir (its contents become root of /opt/ml/code)
+    with tarfile.open(TAR_FILEPATH, 'w:gz') as tar:
+        tar.add(str(TEMP_DIRPATH), arcname='.')
+
+    code_s3_key = f'02_code/train/{JOB_NAME}/source.tar.gz'
+    S3_CLIENT.upload_file(str(TAR_FILEPATH), config.DEFAULT_S3_BUCKET_NAME, code_s3_key)
+    code_s3_uri = f's3://{config.DEFAULT_S3_BUCKET_NAME}/{code_s3_key}'
+
+    image_uri = image_uris.retrieve(
+        framework='huggingface',
+        region=config.AWS_REGION,
+        version='4.49.0',                 # transformers version
+        py_version='py311',
+        instance_type=INSTANCE_TYPE,
+        image_scope='training',
+        base_framework_version='pytorch2.5.1'
+    )
+    # p_rint('Using training image:', image_uri)
+    
+    hyperparameters = {
+        # SageMaker training toolkit special keys:
+        'sagemaker_program': ENTRY_POINT,
+        'sagemaker_submit_directory': code_s3_uri,
+        'sagemaker_container_log_level': '20',
+        'sagemaker_region': config.AWS_REGION,
+    
+        # Your script args:
+        'runtype': 'prod',
+        'now': NOW,
+        'instance_type': INSTANCE_TYPE,
+        'model_name': MODEL_NAME,
+        
+        'hf_dataset_suffix': HF_DATASET_SUFFIX,
+        'label_type': LABEL_TYPE,
+        'text_key': TEXT_KEY,
+        'text_key_rename_to': TEXT_KEY_RENAME_TO,
+        'label_key_rename_to': LABEL_KEY_RENAME_TO,
+        'sample': SAMPLE,          # must be string
+        # 'epochs': '5',
+        # 'train_batch_size': '32',
+        # 'eval_batch_size': '64',
+        # 'warmup_steps': '500',
+        # 'learning_rate': '5e-5'
+    }
+    
+    input_data_config = [
+        {
+            'ChannelName': 'train',
+            'DataSource': {
+                'S3DataSource': {
+                    'S3DataType': 'S3Prefix',
+                    'S3Uri': 's3://sagemaker-research-methodology-extraction/01_data/03_core/unified_works_train/',
+                    'S3DataDistributionType': 'FullyReplicated'
+                }
+            },
+            'InputMode': 'File'
+        }
+    ]
+    
+    try:
+        resp = SAGEMAKER_CLIENT.create_training_job(
+            TrainingJobName=JOB_NAME,
+            RoleArn=EXECUTION_ROLE,
+            AlgorithmSpecification={
+                'TrainingImage': image_uri,
+                'TrainingInputMode': 'File'
+            },
+            HyperParameters=hyperparameters,
+            InputDataConfig=input_data_config,
+            OutputDataConfig={
+                'S3OutputPath': f's3://{config.DEFAULT_S3_BUCKET_NAME}/03_training_output/{JOB_NAME}'
+            },
+            ResourceConfig={
+                'InstanceType': INSTANCE_TYPE,
+                'InstanceCount': 1,
+                'VolumeSizeInGB': VOLUME_SIZE_GB
+            },
+            StoppingCondition={'MaxRuntimeInSeconds': MAX_RUNTIME_S},
+            Environment=ENV_VARS,
+            EnableManagedSpotTraining=False
+        )
+        print('Training job created:', JOB_NAME)
+    except ClientError as e:
+        print('create_training_job failed:')
+        print(e.response.get('Error', e))
+        raise
+    return JOB_NAME
+
+
+
+
+
+
+
+    
+
+    
 
 # If loading this module after kernel start with the usual way:
 # # import os

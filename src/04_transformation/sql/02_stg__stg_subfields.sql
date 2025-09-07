@@ -18,7 +18,8 @@ stg_subfields AS (
         (ROW_NUMBER() OVER(ORDER BY openalex_primary_topic_subfield_count DESC)) -1 AS openalex_primary_topic_subfield_index,
         openalex_primary_topic_subfield_id,
         openalex_primary_topic_subfield_display_name,
-        openalex_primary_topic_subfield_count
+        openalex_primary_topic_subfield_count,
+        openalex_primary_topic_subfield_count * 100.0 / (SELECT SUM(openalex_primary_topic_subfield_count) FROM subfields_grouped) openalex_primary_topic_subfield_percent
     FROM
         subfields_grouped
 )

@@ -23,6 +23,7 @@ stg_topics AS (
         openalex_primary_topic_id,
         openalex_primary_topic_display_name,
         openalex_primary_topic_count,
+        openalex_primary_topic_count * 100.0 / (SELECT SUM(openalex_primary_topic_count) FROM topics_grouped) openalex_primary_topic_percent,
         openalex_primary_topic_subfield_id,
         openalex_primary_topic_subfield_display_name
     FROM
