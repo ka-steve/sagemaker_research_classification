@@ -236,7 +236,6 @@ def create_supervised_multiclass_classification_training_job(
     SCRIPT_FILEPATH,
     MODEL_NAME,
     INSTANCE_TYPE,
-    HF_DATASET_SUFFIX,
     LABEL_TYPE,
     TEXT_KEY,
     SAMPLE,          # must be string
@@ -247,8 +246,10 @@ def create_supervised_multiclass_classification_training_job(
     VOLUME_SIZE_GB=450,
 ):
 
+    SAMPLE = str(SAMPLE)
+    model_short_name = MODEL_NAME.split("/")[-1].split("-")[0]
     NOW = datetime.now().strftime('%m%d%H%M%S')
-    JOB_NAME = f'{MODEL_NAME.split("-")[0]}-{LABEL_TYPE}-{TEXT_KEY}-s{SAMPLE}-{NOW}'
+    JOB_NAME = f'{model_short_name}-{LABEL_TYPE}-{TEXT_KEY}-s{SAMPLE}-{NOW}'
     SAGEMAKER_CLIENT = boto3.client('sagemaker', region_name=config.AWS_REGION)
     S3_CLIENT = boto3.client('s3')
     EXECUTION_ROLE = get_execution_role()
@@ -323,7 +324,6 @@ def create_supervised_multiclass_classification_training_job(
         'instance_type': INSTANCE_TYPE,
         'model_name': MODEL_NAME,
         
-        'hf_dataset_suffix': HF_DATASET_SUFFIX,
         'label_type': LABEL_TYPE,
         'text_key': TEXT_KEY,
         'text_key_rename_to': TEXT_KEY_RENAME_TO,

@@ -73,7 +73,6 @@ parser.add_argument('--runtype', type=str, default='dev')
 parser.add_argument('--instance_type', type=str)
 
 parser.add_argument('--model_name', type=str, default='distilbert-base-uncased')
-parser.add_argument('--hf_dataset_suffix', type=str, default='_Title_SubfieldIndex')
 parser.add_argument('--label_type', type=str, default='subfield')
 parser.add_argument('--text_key', type=str, default='title')
 parser.add_argument('--text_key_rename_to', type=str, default='text')
@@ -81,8 +80,8 @@ parser.add_argument('--label_key_rename_to', type=str, default='label')
 parser.add_argument('--sample', type=int, default=1)
 
 parser.add_argument('--epochs', type=int, default=5)
-parser.add_argument('--train_batch_size', type=int, default=32)
-parser.add_argument('--eval_batch_size', type=int, default=64)
+parser.add_argument('--train_batch_size', type=int, default=16)
+parser.add_argument('--eval_batch_size', type=int, default=16)
 parser.add_argument('--warmup_steps', type=int, default=500)
 parser.add_argument('--learning_rate', type=str, default=5e-5)
 
@@ -98,6 +97,8 @@ args, _ = parser.parse_known_args()
 LABEL_KEY = f'{args.label_type}_index'
 SAMPLE_SUFFIX = f'[:{args.sample}%]' if args.sample!=100 else ''
 RUNTYPE = args.runtype
+HF_DATASET_SUFFIX = f'_{args.text_key}_{args.label_type}'
+
 
 print (args)
 
@@ -128,11 +129,11 @@ time_logger.log('Processed arguments')
 ##########################################################################################
 
 dataset_train = load_dataset(
-    'SteveAKopias/SemanticScholarCSFullTextWithOpenAlexTopics'+args.hf_dataset_suffix, 
+    'SteveAKopias/SemanticScholarCSFullTextWithOpenAlexTopics'+HF_DATASET_SUFFIX, 
     split=f'train{SAMPLE_SUFFIX}' # [:1%]
 )
 dataset_test = load_dataset(
-    'SteveAKopias/SemanticScholarCSFullTextWithOpenAlexTopics'+args.hf_dataset_suffix, 
+    'SteveAKopias/SemanticScholarCSFullTextWithOpenAlexTopics'+HF_DATASET_SUFFIX, 
     split=f'test{SAMPLE_SUFFIX}' # [:1%]
 )
 dataset = DatasetDict({
@@ -166,7 +167,9 @@ model = AutoModelForSequenceClassification.from_pretrained(
     args.model_name,
     num_labels=label_df.shape[0],
     id2label=index2label,
-    label2id=label2index
+    label2id=label2index,
+    attn_implementation='eager', #
+    reference_compile=False, # 
 )
 
 time_logger.log('Model initialized')
@@ -177,7 +180,6 @@ tokenizer = AutoTokenizer.from_pretrained(args.model_name, add_prefix_space=True
 
 def tokenize_function(example):
     text = example[args.text_key_rename_to]
-    print(type(text), text[0:5])
     tokenizer.truncation_side = 'right'
     tokenized_inputs = tokenizer(
         text,
@@ -200,7 +202,11 @@ data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 def compute_metrics(pred):
     labels = pred.label_ids
     predictions = pred.predictions.argmax(-1)
-    precision, recall, f1, _ = precision_recall_fscore_support(labels, predictions, average='micro') # TODO: weighted when not using 1% sample that skips some labels
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        labels, 
+        predictions, 
+        average='micro' if args.sample != 100 else 'weighted'  # weighted when not using % sample that skips some labels
+    ) 
     accuracy = accuracy_score(labels, predictions)
     return {
         'accuracy': accuracy, 
@@ -210,8 +216,9 @@ def compute_metrics(pred):
     }
 
 now = datetime.now().strftime('%Y%m%d%H%M%S')
+model_short_name = args.model_name.split("/")[-1].split("-")[0]
 training_args = TrainingArguments(
-    run_name=f'{args.model_name}-{args.hf_dataset_suffix}-{now}_sample-{args.sample}_epochs-{args.epochs}',
+    run_name=f'{model_short_name}-{HF_DATASET_SUFFIX}-{now}_sample-{args.sample}_epochs-{args.epochs}',
     output_dir=args.model_dir,
     num_train_epochs=args.epochs,
     per_device_train_batch_size=args.train_batch_size,
@@ -222,7 +229,7 @@ training_args = TrainingArguments(
     logging_dir=f'{args.output_data_dir}/logs',
     report_to='wandb',
     # logging_steps=5,
-    evaluation_strategy='epoch',
+    eval_strategy='epoch',
     # eval_strategy='steps',
     # eval_steps=20,
     # max_steps=100,
@@ -236,7 +243,7 @@ trainer = Trainer(
     compute_metrics=compute_metrics,
     train_dataset=tokenized_dataset['train'],
     eval_dataset=tokenized_dataset['test'],
-    tokenizer=tokenizer,
+    processing_class=tokenizer,
     data_collator=data_collator,
 )
 
@@ -253,7 +260,8 @@ tokenized_dataset_predict = tokenized_dataset['test'].select(range(0, 100))
 raw_predictions, label_ids, _metrics = trainer.predict(tokenized_dataset_predict)
 predictions = np.argmax(raw_predictions, axis=1)
 for index, (text, label_id_truth, label_id_pred) in enumerate(zip(tokenized_dataset_predict['text'], tokenized_dataset_predict['label'], predictions)):
-    print(f'#{index} | {text} | {index2label[label_id_truth]} ({label_id_truth}) | {index2label[label_id_pred]} ({label_id_pred})')
+    text_start = text.split("\n")[0][:100]
+    print(f'#{index} | {text_start} | {index2label[label_id_truth]} ({label_id_truth}) | {index2label[label_id_pred]} ({label_id_pred})')
 
 time_logger.log('Printed sample predictions')
 
