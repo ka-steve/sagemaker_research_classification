@@ -250,12 +250,56 @@ stg_unified_works_02_joined_to_openalex AS (
     FROM
         s2oa_join_on_mag_openalex_id
 ),
-stg_unified_works_02_joined_to_openalex_filtered AS (
+stg_unified_works_02_joined_to_openalex_filtered_step01 AS (
     SELECT
         *
     FROM
         stg_unified_works_02_joined_to_openalex
     WHERE
         openalex_joined_on IS NOT NULL
+),
+stg_unified_works_02_joined_to_openalex_filtered_step02 AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (PARTITION BY id_semanticscholar ORDER BY id_mag DESC, id_doi DESC, id_arxiv DESC, publication_date DESC) AS deduplication_row_number
+    FROM
+        stg_unified_works_02_joined_to_openalex_filtered_step01
+),
+stg_unified_works_02_joined_to_openalex_filtered AS (
+    SELECT
+        id_semanticscholar,
+        id_mag,
+        id_doi,
+        id_arxiv,
+        publication_year,
+        publication_date,
+        license,
+        license_allows_derivative_reuse,
+        --s2oa_join_on_mag_openalex_id.title,
+        --s2oa_join_on_mag_openalex_id.content_abstract,
+        --s2oa_join_on_mag_openalex_id.content_text,
+        source_url,
+        --s2oa_join_on_mag_openalex_id.openaccess_status,
+        --s2oa_join_on_mag_openalex_id.annotations_paragraph,
+        --s2oa_join_on_mag_openalex_id.annotations_section_header,
+        has_id_mag,
+        has_id_doi,
+        has_id_mag_or_doi,
+        openalex_id_openalex,
+        openalex_id_doi,
+        openalex_language,
+        openalex_primary_topic_id,
+        openalex_primary_topic_display_name,
+        openalex_primary_topic_subfield_id,
+        openalex_primary_topic_subfield_display_name,
+        openalex_primary_topic_field_id,
+        openalex_primary_topic_field_display_name,
+        openalex_primary_topic_domain_id,
+        openalex_primary_topic_domain_display_name,
+        openalex_joined_on
+    FROM
+        stg_unified_works_02_joined_to_openalex_filtered_step02
+    WHERE
+        deduplication_row_number=1
 )
 SELECT * FROM stg_unified_works_02_joined_to_openalex_filtered

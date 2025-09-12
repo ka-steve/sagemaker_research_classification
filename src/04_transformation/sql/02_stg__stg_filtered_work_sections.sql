@@ -24,7 +24,7 @@ SELECT
     section_start,
     section_end,
     section_type,
-    SUBSTR(stg_unified_works_filtered_.content_text, "section_start" +1, "section_end" - "section_start") AS section_text
+    TRIM(SUBSTR(stg_unified_works_filtered_.content_text, "section_start" +1, "section_end" - "section_start")) AS section_text
 FROM 
     stg_filtered_work_section_annotations_
 LEFT JOIN
