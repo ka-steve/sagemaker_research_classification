@@ -34,36 +34,6 @@ SEMANTICSCHOLAR_API_KEY = semanticscholar_secret[config.SEMANTICSCHOLAR_SECRET_K
 print(f'Keys stored in Secrets Managers for the secret "{config.SEMANTICSCHOLAR_SECRET_NAME}":', list(semanticscholar_secret.keys()))
 time_logger.log('Semanticscholar secret keys fetched')
 
-# def semanticscholar_get_release_ids():
-#     """Fetching the list of dataset release IDs."""
-#     response = requests.get(config.SEMANTICSCHOLAR_API_BASE_URL)
-#     response.raise_for_status()
-#     res = response.json()
-#     print(res)
-#     return res
-
-
-# def semanticscholar_get_latest_metadata(release_id):
-#     """Fetch the metadata for the latest dataset release."""
-#     url = f'{config.SEMANTICSCHOLAR_API_BASE_URL}/{release_id}'
-#     response = requests.get(url)
-#     response.raise_for_status()
-#     res_json = response.json()
-#     res = []
-#     for dataset in res_json['datasets']:
-#         if dataset['name'] in ['papers', 's2orc']:
-#             res.append(dataset)
-#             print(dataset)
-#     return res
-
-
-# def get_releases_and_metadata():
-#     release_ids = semanticscholar_get_release_ids()
-#     latest_release_id = release_ids[-1]
-
-#     semanticscholar_get_latest_metadata(latest_release_id)
-#     return latest_release_id
-
 class SemanticScholarIngestion():
     """Class to handle the ingestion of datasets from Semantic Scholar.
 
@@ -213,23 +183,13 @@ RUNTYPE = args.runtype
 print (args)
 
 if RUNTYPE == 'dev':
-    # PROCESSING_FILEPATH_PREFIX = '_dev_processing'
-    # PROCESSING_FILEPATH_INPUT = os.path.join(script_dir, f'{PROCESSING_FILEPATH_PREFIX}/input/data/')
-    # PROCESSING_FILEPATH_OUTPUT = os.path.join(script_dir, f'{PROCESSING_FILEPATH_PREFIX}/output/results/')
     USE_TQDM = True
 elif RUNTYPE == 'prod':
-    # PROCESSING_FILEPATH_PREFIX = config.DEFAULT_PROCESSING_FILEPATH_PREFIX
-    # PROCESSING_FILEPATH_INPUT = f'{PROCESSING_FILEPATH_PREFIX}/input/data/'
-    # PROCESSING_FILEPATH_OUTPUT = f'{PROCESSING_FILEPATH_PREFIX}/output/results/'
     USE_TQDM = False
 else:
     raise ValueError('Argument --runtype should be either "dev" or "prod" (without quotes).')
 
 time_logger.log('Processed arguments')
-
-# SEMANTICSCHOLAR_LATEST_RELEASE_ID = get_releases_and_metadata()
-# print(f'SEMANTICSCHOLAR_LATEST_RELEASE_ID: {SEMANTICSCHOLAR_LATEST_RELEASE_ID}')
-# time_logger.log('Semanticscholar latest release ID fetched')
 
 
 ss_ingestion = SemanticScholarIngestion(
@@ -245,35 +205,5 @@ ss_ingestion = SemanticScholarIngestion(
 )
 
 time_logger.log('Semanticscholar files downloaded')
-
-
-# utils.glue_crawl(
-#     s3_targets=[f's3://{config.DEFAULT_S3_BUCKET_NAME}/01_data/01_raw/semanticscholar/'],
-#     database_name='01_raw',
-#     table_prefix='semanticscholar_',
-#     aws_region=config.AWS_REGION
-# )
-# time_logger.log('Semanticscholar glue crawl done')
-
-# utils.ensure_path(PROCESSING_FILEPATH_INPUT)
-# utils.ensure_path(PROCESSING_FILEPATH_OUTPUT)
-
-# with open(os.path.join(PROCESSING_FILEPATH_INPUT, 'test.txt'), 'r', encoding='utf-8') as test_file:
-#     test_content = test_file.read()
-
-# utcnow_string = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
-# target_filepath = os.path.join(PROCESSING_FILEPATH_OUTPUT, f'results__{utcnow_string}.txt')
-# print(f'Target filepath for results: {target_filepath}')
-
-# with open(target_filepath, 'w', encoding='utf-8') as results_file:
-#     results_file.write('\n'.join([
-#         f'semanticscholar_secret_keys[0]: {list(semanticscholar_secret.keys())[0]}',
-#         f'SEMANTICSCHOLAR_LATEST_RELEASE_ID: {SEMANTICSCHOLAR_LATEST_RELEASE_ID}',
-#         f'test_content: {test_content}',
-#         f'args.test_argument_key_01: {args.test_argument_key_01}',
-#         f'args.test_argument_key_02: {args.test_argument_key_02}'
-#     ]))
-
-# time_logger.log('testblock 2')
 
 time_logger.log('DONE')
