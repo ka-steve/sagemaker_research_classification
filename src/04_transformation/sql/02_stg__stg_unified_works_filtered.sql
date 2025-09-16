@@ -5,7 +5,7 @@ stg_unified_works_metadata_04_with_topics_and_subfields_ AS (
 stg_semanticscholar_combined_works_content_ AS (
 SELECT * FROM "02_stg".stg_semanticscholar_combined_works_content
 ),
-stg_unified_works_filtered AS (
+joined_metadata_and_content AS (
     SELECT
         metadata.id_semanticscholar,
         metadata.id_mag,
@@ -55,5 +55,15 @@ stg_unified_works_filtered AS (
         stg_semanticscholar_combined_works_content_
     ON
         metadata.id_semanticscholar = stg_semanticscholar_combined_works_content_.id_semanticscholar
+),
+stg_unified_works_filtered AS (
+    SELECT
+        *
+    FROM
+        joined_metadata_and_content
+    WHERE
+        title IS NOT NULL AND
+        content_abstract IS NOT NULL AND
+        content_text IS NOT NULL
 )
 SELECT * FROM stg_unified_works_filtered

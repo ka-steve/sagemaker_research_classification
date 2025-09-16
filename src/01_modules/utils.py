@@ -240,16 +240,31 @@ def create_supervised_multiclass_classification_training_job(
     TEXT_KEY,
     SAMPLE,          # must be string
     MAX_RUNTIME_S,
+    TRAIN_BATCH_SIZE=16,
+    EVAL_BATCH_SIZE=32,
+    WARMUP_STEPS=100,
+    LEARNING_RATE=5e-5,
     ENTRY_POINT='05_tuning_basic/05_12_tuning_basic_simple.py',
     TEXT_KEY_RENAME_TO='text',
     LABEL_KEY_RENAME_TO='label',
-    VOLUME_SIZE_GB=450,
+    VOLUME_SIZE_GB=None
 ):
 
     SAMPLE = str(SAMPLE)
+    TRAIN_BATCH_SIZE=str(TRAIN_BATCH_SIZE)
+    EVAL_BATCH_SIZE=str(EVAL_BATCH_SIZE)
+    WARMUP_STEPS=str(WARMUP_STEPS)
+    LEARNING_RATE=str(LEARNING_RATE)
+    if not VOLUME_SIZE_GB:
+        if INSTANCE_TYPE == 'ml.g6.xlarge':
+            VOLUME_SIZE_GB=250
+        else:
+            VOLUME_SIZE_GB=450
+            
     model_short_name = MODEL_NAME.split("/")[-1].split("-")[0]
     NOW = datetime.now().strftime('%m%d%H%M%S')
     JOB_NAME = f'{model_short_name}-{LABEL_TYPE}-{TEXT_KEY}-s{SAMPLE}-{NOW}'
+    MODEL_SHORT_NAME = model_short_name
     SAGEMAKER_CLIENT = boto3.client('sagemaker', region_name=config.AWS_REGION)
     S3_CLIENT = boto3.client('s3')
     EXECUTION_ROLE = get_execution_role()
@@ -323,17 +338,18 @@ def create_supervised_multiclass_classification_training_job(
         'now': NOW,
         'instance_type': INSTANCE_TYPE,
         'model_name': MODEL_NAME,
+        'model_short_name': MODEL_SHORT_NAME,
         
         'label_type': LABEL_TYPE,
         'text_key': TEXT_KEY,
         'text_key_rename_to': TEXT_KEY_RENAME_TO,
         'label_key_rename_to': LABEL_KEY_RENAME_TO,
         'sample': SAMPLE,          # must be string
-        # 'epochs': '5',
-        # 'train_batch_size': '32',
-        # 'eval_batch_size': '64',
-        # 'warmup_steps': '500',
-        # 'learning_rate': '5e-5'
+        'epochs': '5',
+        'train_batch_size': TRAIN_BATCH_SIZE, # '16'
+        'eval_batch_size': EVAL_BATCH_SIZE, # '64'
+        'warmup_steps': WARMUP_STEPS, # 500
+        'learning_rate': LEARNING_RATE # 1e-5 to 5e-5
     }
     
     input_data_config = [

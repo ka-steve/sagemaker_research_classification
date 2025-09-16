@@ -56,4 +56,4 @@ stg_topics AS (
     ON
         CONCAT('https://openalex.org/T', CAST(numbered_topics.openalex_primary_topic_id AS VARCHAR)) = raw_topics.id
 )
-SELECT * FROM stg_topics WHERE openalex_primary_topic_id=10036 ORDER BY openalex_primary_topic_index
+SELECT * FROM stg_topics

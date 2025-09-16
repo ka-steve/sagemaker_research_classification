@@ -72,9 +72,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--runtype', type=str, default='dev')
 parser.add_argument('--instance_type', type=str)
 
-parser.add_argument('--model_name', type=str, default='distilbert-base-uncased')
-parser.add_argument('--label_type', type=str, default='subfield')
-parser.add_argument('--text_key', type=str, default='title')
+parser.add_argument('--job_name', type=str)
+parser.add_argument('--model_name', type=str)
+parser.add_argument('--model_short_name', type=str)
+parser.add_argument('--text_key', type=str)
+parser.add_argument('--label_type', type=str)
 parser.add_argument('--text_key_rename_to', type=str, default='text')
 parser.add_argument('--label_key_rename_to', type=str, default='label')
 parser.add_argument('--sample', type=int, default=1)
@@ -84,6 +86,9 @@ parser.add_argument('--train_batch_size', type=int, default=16)
 parser.add_argument('--eval_batch_size', type=int, default=16)
 parser.add_argument('--warmup_steps', type=int, default=500)
 parser.add_argument('--learning_rate', type=str, default=5e-5)
+
+parser.add_argument('--scp_attn_implementation', type=str, default=None)
+parser.add_argument('--scp_reference_compile', type=bool, default=None)
 
 # Data, model, and output directories
 SM_OUTPUT_DATA_DIR = os.environ['SM_OUTPUT_DATA_DIR'] if 'SM_OUTPUT_DATA_DIR' in os.environ else 'SM_OUTPUT_DATA_DIR'
@@ -97,7 +102,7 @@ args, _ = parser.parse_known_args()
 LABEL_KEY = f'{args.label_type}_index'
 SAMPLE_SUFFIX = f'[:{args.sample}%]' if args.sample!=100 else ''
 RUNTYPE = args.runtype
-HF_DATASET_SUFFIX = f'_{args.text_key}_{args.label_type}'
+HF_SUBSET = f'{args.text_key}_{args.label_type}'
 
 
 print (args)
@@ -117,23 +122,40 @@ else:
 
 
 # set the wandb project where this run will be logged
-os.environ['WANDB_PROJECT']='research_methodology_extraction'
-# save your trained model checkpoint to wandb
-os.environ['WANDB_LOG_MODEL']='checkpoint'
+os.environ['WANDB_PROJECT']='sagemaker_research_classification'
+# save the trained model to wandb
+os.environ['WANDB_LOG_MODEL']='end'
 # turn off watch to log faster
-os.environ['WANDB_WATCH']='false'
-
+os.environ['WANDB_WATCH']='all'
 
 time_logger.log('Processed arguments')
+##########################################################################################
+
+wandb.init(
+    project=os.environ.get('WANDB_PROJECT'),
+    name=args.job_name,
+    tags=[
+        f'model: {args.model_short_name}',
+        f'text: {args.text_key}',
+        f'label: {args.label_type}',
+        f'sample: {args.sample}%',
+        f'instance: {args.instance_type}',
+    ],
+    group='v2',
+)
+
+time_logger.log('Initialized W&B')
 
 ##########################################################################################
 
 dataset_train = load_dataset(
-    'SteveAKopias/SemanticScholarCSFullTextWithOpenAlexTopics'+HF_DATASET_SUFFIX, 
+    'SteveAKopias/SemanticScholarCSFullTextWithOpenAlexTopics', 
+    HF_SUBSET,
     split=f'train{SAMPLE_SUFFIX}' # [:1%]
 )
 dataset_test = load_dataset(
-    'SteveAKopias/SemanticScholarCSFullTextWithOpenAlexTopics'+HF_DATASET_SUFFIX, 
+    'SteveAKopias/SemanticScholarCSFullTextWithOpenAlexTopics', 
+    HF_SUBSET,
     split=f'test{SAMPLE_SUFFIX}' # [:1%]
 )
 dataset = DatasetDict({
@@ -162,15 +184,18 @@ label2index = dict(zip(label_df['display_name'], label_df['index'].astype(int)))
 time_logger.log('Labels loaded')
 
 ##########################################################################################
+sequence_classification_params = {
+    'pretrained_model_name_or_path': args.model_name,
+    'num_labels': label_df.shape[0],
+    'id2label': index2label,
+    'label2id': label2index,
+}
+if args.scp_attn_implementation is not None:
+    sequence_classification_params['attn_implementation'] = args.scp_attn_implementation # 'eager'
+if args.scp_reference_compile is not None:
+    sequence_classification_params['reference_compile'] = args.scp_reference_compile # False
 
-model = AutoModelForSequenceClassification.from_pretrained(
-    args.model_name,
-    num_labels=label_df.shape[0],
-    id2label=index2label,
-    label2id=label2index,
-    attn_implementation='eager', #
-    reference_compile=False, # 
-)
+model = AutoModelForSequenceClassification.from_pretrained(**sequence_classification_params)
 
 time_logger.log('Model initialized')
 
@@ -199,26 +224,29 @@ time_logger.log('Dataset tokenized')
 
 data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
 
+matthews_metric = evaluate.load('matthews_correlation')
+
 def compute_metrics(pred):
     labels = pred.label_ids
     predictions = pred.predictions.argmax(-1)
     precision, recall, f1, _ = precision_recall_fscore_support(
         labels, 
         predictions, 
-        average='micro' if args.sample != 100 else 'weighted'  # weighted when not using % sample that skips some labels
-    ) 
+        average='micro'
+    )
+    matthews_results = matthews_metric.compute(references=labels, predictions=predictions)
     accuracy = accuracy_score(labels, predictions)
     return {
         'accuracy': accuracy, 
         'f1': f1,
-        'precision': precision,
-        'recall': recall
+        'matthews_correlation': matthews_results['matthews_correlation']
     }
 
 now = datetime.now().strftime('%Y%m%d%H%M%S')
 model_short_name = args.model_name.split("/")[-1].split("-")[0]
 training_args = TrainingArguments(
-    run_name=f'{model_short_name}-{HF_DATASET_SUFFIX}-{now}_sample-{args.sample}_epochs-{args.epochs}',
+    run_name=args.job_name,
+    # f'{model_short_name}-{HF_SUBSET}-{now}_sample-{args.sample}_epochs-{args.epochs}',
     output_dir=args.model_dir,
     num_train_epochs=args.epochs,
     per_device_train_batch_size=args.train_batch_size,
@@ -228,12 +256,9 @@ training_args = TrainingArguments(
 
     logging_dir=f'{args.output_data_dir}/logs',
     report_to='wandb',
-    # logging_steps=5,
     eval_strategy='epoch',
-    # eval_strategy='steps',
-    # eval_steps=20,
-    # max_steps=100,
-    # save_steps=100,
+    save_strategy='epoch',
+    load_best_model_at_end=True,
     disable_tqdm=True if RUNTYPE == 'prod' else False
 )
 
