@@ -396,14 +396,78 @@ def create_supervised_multiclass_classification_training_job(
     return JOB_NAME
 
 
+def get_available_training_quotas():
+    instance_capacity = {}
+    instances = [
+        'ml.g6.xlarge',
+        'ml.g6.2xlarge',
+        'ml.g6.4xlarge',
+        'ml.g6.8xlarge',
+        'ml.g6.12xlarge',
+        'ml.g6.16xlarge',
+        'ml.g6.24xlarge',
+        'ml.g6.48xlarge'
+    ]
+
+    quota_client = boto3.client(
+        service_name='service-quotas',
+        region_name=config.AWS_REGION
+    )
+
+    sagemaker_client = boto3.client(
+        service_name='sagemaker',
+        region_name=config.AWS_REGION
+    )
+
+    first_page = True
+    page = {}
+    services = []
+    while first_page or 'NextToken' in page:
+        first_page = False
+        if 'NextToken' in page:
+            page = quota_client.list_services(MaxResults=100, NextToken=page['NextToken'])
+        else:
+            page = quota_client.list_services(MaxResults=100)
+        services = services + page['Services']
+
+    first_page = True
+    page = {}
+    quotas = {}
+    while first_page or 'NextToken' in page:
+        first_page = False
+        if 'NextToken' in page:
+            page = quota_client.list_service_quotas(ServiceCode='sagemaker', MaxResults=100, NextToken=page['NextToken'])
+        else:
+            page = quota_client.list_service_quotas(ServiceCode='sagemaker', MaxResults=100)
+        for quota in page['Quotas']:
+            if quota['QuotaName'] not in quotas:
+                quotas[quota['QuotaName']] = quota['Value']
+            else:
+                raise ValueError('Quota name already exists')
+
+    for instance in instances:
+        quota = int(quotas[f'{instance} for training job usage'])
+        instance_capacity[instance] = {'quota': quota, 'usage': 0, 'available': quota}
+
+    first_page = True
+    page = {}
+    while first_page or 'NextToken' in page:
+        first_page = False
+        if 'NextToken' in page:
+            page = sagemaker_client.list_training_jobs(NextToken=page['NextToken'])
+        else:
+            page = sagemaker_client.list_training_jobs()
+        for training_job_summary in page['TrainingJobSummaries']:
+            if training_job_summary['TrainingJobStatus'] in ('InProgress', 'Stopping'):
+                training_job = sagemaker_client.describe_training_job(TrainingJobName=training_job_summary['TrainingJobName'])
+                instance = training_job['ResourceConfig']['InstanceType']
+                instance_capacity[instance]['usage'] += 1
+                instance_capacity[instance]['available'] -= 1
+
+    return instance_capacity
 
 
 
-
-
-    
-
-    
 
 # If loading this module after kernel start with the usual way:
 # # import os
