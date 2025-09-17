@@ -261,7 +261,7 @@ def create_supervised_multiclass_classification_training_job(
         else:
             VOLUME_SIZE_GB=450
             
-    model_short_name = MODEL_NAME.split("/")[-1].split("-")[0]
+    model_short_name = MODEL_NAME.replace('_','-').split("/")[-1].split("-")[0]
     NOW = datetime.now().strftime('%m%d%H%M%S')
     JOB_NAME = f'{model_short_name}-{LABEL_TYPE}-{TEXT_KEY}-s{SAMPLE}-{NOW}'
     MODEL_SHORT_NAME = model_short_name
