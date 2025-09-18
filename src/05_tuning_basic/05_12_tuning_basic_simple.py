@@ -193,7 +193,7 @@ sequence_classification_params = {
 if args.scp_attn_implementation is not None:
     sequence_classification_params['attn_implementation'] = args.scp_attn_implementation # 'eager'
 if args.scp_reference_compile is not None:
-    sequence_classification_params['reference_compile'] = args.scp_reference_compile # False
+    sequence_classification_params['reference_compile'] = False
 
 model = AutoModelForSequenceClassification.from_pretrained(**sequence_classification_params)
 

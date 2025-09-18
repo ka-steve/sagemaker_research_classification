@@ -247,7 +247,9 @@ def create_supervised_multiclass_classification_training_job(
     ENTRY_POINT='05_tuning_basic/05_12_tuning_basic_simple.py',
     TEXT_KEY_RENAME_TO='text',
     LABEL_KEY_RENAME_TO='label',
-    VOLUME_SIZE_GB=None
+    VOLUME_SIZE_GB=None,
+    SCP_REFERENCE_COMPILE=None,
+    SCP_ATTN_IMPLEMENTATION=None,
 ):
 
     SAMPLE = str(SAMPLE)
@@ -351,6 +353,10 @@ def create_supervised_multiclass_classification_training_job(
         'warmup_steps': WARMUP_STEPS, # 500
         'learning_rate': LEARNING_RATE # 1e-5 to 5e-5
     }
+    if SCP_REFERENCE_COMPILE is not None:
+        hyperparameters['scp_reference_compile'] = str(SCP_REFERENCE_COMPILE)
+    if SCP_ATTN_IMPLEMENTATION is not None:
+        hyperparameters['scp_attn_implementation'] = SCP_ATTN_IMPLEMENTATION
     
     input_data_config = [
         {
