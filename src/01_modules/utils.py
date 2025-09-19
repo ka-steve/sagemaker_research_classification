@@ -408,11 +408,7 @@ def get_available_training_quotas():
         'ml.g6.xlarge',
         'ml.g6.2xlarge',
         'ml.g6.4xlarge',
-        'ml.g6.8xlarge',
-        'ml.g6.12xlarge',
-        'ml.g6.16xlarge',
-        'ml.g6.24xlarge',
-        'ml.g6.48xlarge'
+        'ml.g6.8xlarge'
     ]
 
     quota_client = boto3.client(

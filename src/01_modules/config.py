@@ -28,4 +28,7 @@ SEMANTICSCHOLAR_SECRET_KEY = 'x-api-key'
 OPENALEX_SOURCE_S3_BUCKET_NAME = 'openalex'
 OPENALEX_S3_RAW_DATA_PREFIX = f'{S3_RAW_DATA_PREFIX}/openalex'
 
+WANDB_ENTITY = 'steve-attila-kopias'
+WANDB_PROJECT = 'sagemaker_research_classification'
+
 print(f'config.py loaded: v{_VERSION}')
