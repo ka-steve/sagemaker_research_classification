@@ -1,5 +1,5 @@
 pandas==2.3.1
-scipy==1.23.1
+scipy==1.13.1
 sagemaker==2.250.0 # The newest version at the time
 transformers==4.49.0 # The newest version sagemaker==2.250.0 supports, but only in Python 3.11
 datasets==4.0.0
@@ -24,3 +24,4 @@ keybert==0.9.0
 bertopic==0.17.3
 umap-learn==0.5.7
 hdbscan==0.8.40
+plotly==6.3.0

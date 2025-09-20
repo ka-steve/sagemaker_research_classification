@@ -87,6 +87,7 @@ parser.add_argument('--eval_batch_size', type=int, default=16)
 parser.add_argument('--warmup_steps', type=int, default=500)
 parser.add_argument('--learning_rate', type=str, default=5e-5)
 
+parser.add_argument('--use_semibalanced', type=bool, default=False)
 parser.add_argument('--scp_attn_implementation', type=str, default=None)
 parser.add_argument('--scp_reference_compile', type=bool, default=None)
 
@@ -131,16 +132,21 @@ os.environ['WANDB_WATCH']='all'
 time_logger.log('Processed arguments')
 ##########################################################################################
 
+wandb_tags = [
+    f'model: {args.model_short_name}',
+    f'text: {args.text_key}',
+    f'label: {args.label_type}',
+    f'sample: {args.sample}%',
+    f'instance: {args.instance_type}',
+]
+
+if args.use_semibalanced:
+    wandb_tags.append('semibalanced')
+
 wandb.init(
     project=os.environ.get('WANDB_PROJECT'),
     name=args.job_name,
-    tags=[
-        f'model: {args.model_short_name}',
-        f'text: {args.text_key}',
-        f'label: {args.label_type}',
-        f'sample: {args.sample}%',
-        f'instance: {args.instance_type}',
-    ],
+    tags=wandb_tags,
     group='v2',
 )
 
@@ -148,13 +154,19 @@ time_logger.log('Initialized W&B')
 
 ##########################################################################################
 
+dataset_name = 'SteveAKopias/SemanticScholarCSFullTextWithOpenAlexTopics'
+if args.use_semibalanced:
+    dataset_name = f'{dataset_name}Semibalanced'
+
+print('using dataset: ', dataset_name)
+
 dataset_train = load_dataset(
-    'SteveAKopias/SemanticScholarCSFullTextWithOpenAlexTopics', 
+    dataset_name, 
     HF_SUBSET,
     split=f'train{SAMPLE_SUFFIX}' # [:1%]
 )
 dataset_test = load_dataset(
-    'SteveAKopias/SemanticScholarCSFullTextWithOpenAlexTopics', 
+    dataset_name, 
     HF_SUBSET,
     split=f'test{SAMPLE_SUFFIX}' # [:1%]
 )
@@ -169,16 +181,19 @@ time_logger.log('Dataset loaded')
 
 ##########################################################################################
 
+label_table = f'{args.label_type}s'
+if args.use_semibalanced:
+    label_table = f'{label_table}_semibalanced'
 label_df = wr.athena.read_sql_query(
 f"""
 SELECT 
-    {args.label_type}_index AS index, 
+    {args.label_type}_index AS index,
     {args.label_type}_display_name AS display_name
 FROM
-    {args.label_type}s
+    {label_table}
 """, '03_core'
 )
-index2label = dict(zip(label_df[f'index'].astype(int), label_df['display_name']))
+index2label = dict(zip(label_df['index'].astype(int), label_df['display_name']))
 label2index = dict(zip(label_df['display_name'], label_df['index'].astype(int)))
 
 time_logger.log('Labels loaded')

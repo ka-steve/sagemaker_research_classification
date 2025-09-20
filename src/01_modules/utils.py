@@ -240,6 +240,7 @@ def create_supervised_multiclass_classification_training_job(
     TEXT_KEY,
     SAMPLE,          # must be string
     MAX_RUNTIME_S,
+    USE_SEMIBALANCED=False,
     TRAIN_BATCH_SIZE=16,
     EVAL_BATCH_SIZE=32,
     WARMUP_STEPS=100,
@@ -266,6 +267,8 @@ def create_supervised_multiclass_classification_training_job(
     model_short_name = MODEL_NAME.replace('_','-').split("/")[-1].split("-")[0]
     NOW = datetime.now().strftime('%m%d%H%M%S')
     JOB_NAME = f'{model_short_name}-{LABEL_TYPE}-{TEXT_KEY}-s{SAMPLE}-{NOW}'
+    if USE_SEMIBALANCED:
+        JOB_NAME = f'semibalanced-{JOB_NAME}'
     MODEL_SHORT_NAME = model_short_name
     SAGEMAKER_CLIENT = boto3.client('sagemaker', region_name=config.AWS_REGION)
     S3_CLIENT = boto3.client('s3')
@@ -353,6 +356,8 @@ def create_supervised_multiclass_classification_training_job(
         'warmup_steps': WARMUP_STEPS, # 500
         'learning_rate': LEARNING_RATE # 1e-5 to 5e-5
     }
+    if USE_SEMIBALANCED:
+        hyperparameters['use_semibalanced'] = str(USE_SEMIBALANCED)
     if SCP_REFERENCE_COMPILE is not None:
         hyperparameters['scp_reference_compile'] = str(SCP_REFERENCE_COMPILE)
     if SCP_ATTN_IMPLEMENTATION is not None:
