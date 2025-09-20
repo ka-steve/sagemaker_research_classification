@@ -25,3 +25,4 @@ bertopic==0.17.3
 umap-learn==0.5.7
 hdbscan==0.8.40
 plotly==6.3.0
+kaleido==1.1.0
