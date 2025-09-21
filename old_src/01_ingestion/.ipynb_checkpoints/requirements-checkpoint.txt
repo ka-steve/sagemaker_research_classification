@@ -1,5 +1,0 @@
-numexpr>=2.8.4
-boto3
-ipykernel
-requests
-awswrangler
